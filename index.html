@@ -7,6 +7,7 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -324,6 +325,7 @@ const CONFIG = {
 const params=new URLSearchParams(location.search), DEV=params.has("dev");
 const appA=firebase.initializeApp(CONFIG.fbA,"A"), appB=firebase.initializeApp(CONFIG.fbB,"B");
 const dbA=appA.firestore(), dbB=appB.firestore();
+const authA=appA.auth(), authB=appB.auth();
 const linkDb=CONFIG.LINK_DB==="A"?dbA:dbB;
 
 /* ===== helpers ===== */
@@ -347,6 +349,16 @@ function fatal(m){$("#errTxt").textContent=m;show("vError");}
       await liff.init({liffId:CONFIG.LIFF_ID});
       if(!liff.isLoggedIn()){ liff.login(); return; }
       userId=(await liff.getProfile()).userId;
+    }
+    $("#loadingTxt").textContent="กำลังเชื่อมต่อระบบ...";
+    try{
+      await Promise.all([authA.signInAnonymously(), authB.signInAnonymously()]);
+    }catch(ae){
+      console.error(ae);
+      const code=ae.code||"";
+      if(code==="auth/operation-not-allowed"||code==="auth/admin-restricted-operation")
+        return fatal("ระบบยังไม่เปิดการเข้าถึงแบบ Anonymous (ติดต่อผู้ดูแลระบบ)");
+      return fatal("เชื่อมต่อระบบไม่สำเร็จ: "+(ae.message||ae));
     }
     $("#loadingTxt").textContent="กำลังตรวจสอบการผูกบัญชี...";
     const linkDoc=await linkDb.collection(CONFIG.LINK_COLLECTION).doc(userId).get();
