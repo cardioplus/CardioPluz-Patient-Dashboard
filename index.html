@@ -89,6 +89,7 @@ th.c-goal,td.c-goal{position:sticky;left:116px;z-index:2;width:98px;min-width:98
 thead th.c-param,thead th.c-goal{z-index:3}
 td.c-param .pl{font-weight:600;color:var(--ink);display:block;line-height:1.2}
 td.c-param .pu{font-size:.72rem;color:var(--faint);font-weight:400}
+td.qv{font-weight:700;color:var(--ink)}th.qv{text-align:left}td.qd,th.qd{color:var(--faint);font-size:.8rem;white-space:nowrap;text-align:left}h3 .qhint{font-weight:400;font-size:.78rem;color:var(--faint)}
 td.c-goal{font-family:'Kanit';font-weight:500;font-size:.8rem}
 td.c-goal .risk{font-family:'Sarabun';font-weight:500;font-size:.7rem;line-height:1.2;display:inline-block;color:var(--teal-d)}
 thead th.c-goal{color:var(--teal-d)}
@@ -467,17 +468,23 @@ function ckdStageInfo(e){if(e==null||e>=60)return null;
   if(e>=15)return{stage:"4",txt:"โรคไตเรื้อรัง ระยะ 4 (ลดลงรุนแรง)",cls:"bad"};
   return{stage:"5",txt:"ไตวายเรื้อรังระยะสุดท้าย (ระยะ 5)",cls:"bad"};}
 function buildTimeline(data){
-  const rows={};
+  const rows={}, textRows={};
   const put=(date,key,val,src)=>{if(!date)return;const n=num(val);if(n==null)return;rows[date]=rows[date]||{};if(rows[date][key]==null)rows[date][key]={v:n,src};};
+  const putText=(date,key,val)=>{if(!date||val==null||String(val).trim()==="")return;textRows[date]=textRows[date]||{};if(textRows[date][key]==null)textRows[date][key]=String(val).trim();};
   data.visits.forEach(v=>{for(const f in A_MAP)put(v.visitDate,A_MAP[f],v[f],"A");});
   if(data.patient){
     (data.patient.vitalsHistory||data.patient.vitals||[]).forEach(e=>{put(e.d,"sbp",e.sb,"B");put(e.d,"dbp",e.db,"B");put(e.d,"hr",e.hr,"B");put(e.d,"wt",e.wt,"B");});
-    (data.patient.labsHistory||data.patient.labTable||[]).forEach(e=>{put(e.d,"fbs",e.fbs,"B");put(e.d,"a1c",e.a1c,"B");put(e.d,"cr",e.cr,"B");put(e.d,"tc",e.tc,"B");put(e.d,"tg",e.tg,"B");put(e.d,"hdl",e.hdl,"B");put(e.d,"ldl",e.ldl,"B");});
+    const B_LAB_MAP={fbs:"fbs",a1c:"a1c",cr:"cr",egfr:"egfr",tc:"tc",tg:"tg",hdl:"hdl",ldl:"ldl",nonhdl:"nonhdl",na:"na",k:"k",cl:"cl",co2:"co2",ast:"ast",alt:"alt",alp:"alp",ggt:"ggt",tbil:"tbili",dbil:"dbili",alb:"alb",wbc:"wbc",rbc:"rbc",hb:"hb",hct:"hct",mcv:"mcv",mch:"mch",mchc:"mchc",rdw:"rdw",plt:"plt",neut:"neut",lym:"lym",mono:"mono",eos:"eos",baso:"baso",tsh:"tsh",ft4:"ft4",t3:"t3"};
+    const B_LAB_TEXT=["ua_color","ua_appear","ua_sg","ua_ph","ua_pro","ua_glu","ua_ket","ua_blood","ua_leu","ua_nit","ua_uro","ua_bil","ua_wbc","ua_rbc","ua_epi","hbsag","antihbs"];
+    (data.patient.labsHistory||data.patient.labTable||[]).forEach(e=>{
+      for(const f in B_LAB_MAP) put(e.d,B_LAB_MAP[f],e[f],"B");
+      B_LAB_TEXT.forEach(f=>putText(e.d,f,e[f]));
+    });
   }
   for(const d in rows){const r=rows[d];if(r.tc&&r.hdl&&r.nonhdl==null)r.nonhdl={v:r.tc.v-r.hdl.v,src:"calc"};}
   const _sex=getSex(data),_dob=patientDOB(data);
   for(const d in rows){const r=rows[d];if(r.cr&&r.egfr==null){const age=_dob?ageAt(_dob,d):((data.patient&&+data.patient.age)||null);const e=ckdEpi(r.cr.v,age,_sex);if(e!=null)r.egfr={v:e,src:"calc"};}}
-  return {rows,dates:Object.keys(rows).sort((a,b)=>b.localeCompare(a))};
+  return {rows,dates:Object.keys(rows).sort((a,b)=>b.localeCompare(a)),textRows,textDates:Object.keys(textRows).sort((a,b)=>b.localeCompare(a))};
 }
 
 /* ===== GOALS ===== */
@@ -499,7 +506,11 @@ function buildGoals(data){
     upcr:"< 150",ast:"< 40",alt:"< 40",alp:"30–120",ggt:"< 60",tbili:"< 1.2",dbili:"< 0.3",alb:"3.5–5.0",
     hb:sex==="female"?"12.0–15.5":"13.0–17.0",hct:sex==="female"?"36–48":"40–52",tsh:"0.4–4.0",vitd:"≥ 30",
     ferritin:sex==="female"?"15–150":"30–400",psa:"< 4.0",bfm:"",inbody:"≥ 70",
-    wbc:"4.0–10.0",plt:"150–400",ft4:"0.8–1.8",t3:"80–200"};
+    wbc:"4.5–10.0",rbc:sex==="female"?"4.1–5.1":"4.5–5.9",plt:"140–400",
+    mcv:"80–100",mch:"26–34",mchc:"31–37",rdw:"11–16",
+    neut:"50–70",lym:"18–42",mono:"2–11",eos:"1–10",baso:"0–2",
+    na:"135–145",k:"3.5–5.5",cl:"98–108",co2:"21–31",
+    ft4:"0.8–1.8",t3:"80–200"};
 }
 function evalStatus(val,goal){if(val==null||!goal)return"";const g=goal.replace(/,/g,"").trim();let m;
   if((m=g.match(/^[<≤]\s*([\d.]+)/))){const t=+m[1];return val<=t?"ok":(val<=t*1.1?"warn":"bad");}
@@ -521,8 +532,9 @@ const GROUPS=[
   {title:"ไขมันในเลือด",keys:[{k:"ldl",l:"LDL",u:"mg/dL",d:0},{k:"hdl",l:"HDL",u:"mg/dL",d:0},{k:"tg",l:"ไตรกลีเซอไรด์",u:"mg/dL",d:0},{k:"tc",l:"คอเลสเตอรอลรวม",u:"mg/dL",d:0},{k:"nonhdl",l:"Non-HDL",u:"mg/dL",d:0},{k:"apob",l:"ApoB",u:"mg/dL",d:0},{k:"lpa",l:"Lp(a)",u:"mg/dL",d:0}]},
   {title:"ระดับน้ำตาล",keys:[{k:"fbs",l:"น้ำตาลขณะอดอาหาร",u:"mg/dL",d:0},{k:"a1c",l:"น้ำตาลสะสม HbA1c",u:"%",d:1}]},
   {title:"การทำงานของไต",keys:[{k:"cr",l:"Creatinine",u:"mg/dL",d:2},{k:"egfr",l:"eGFR (CKD-EPI)",u:"mL/min/1.73m²",d:0},{k:"upcr",l:"UPCr (โปรตีนในปัสสาวะ)",u:"mg/g",d:0}]},
+  {title:"เกลือแร่ (Electrolytes)",keys:[{k:"na",l:"โซเดียม (Na)",u:"mmol/L",d:1},{k:"k",l:"โพแทสเซียม (K)",u:"mmol/L",d:2},{k:"cl",l:"คลอไรด์ (Cl)",u:"mmol/L",d:1},{k:"co2",l:"ไบคาร์บอเนต (CO₂)",u:"mmol/L",d:1}]},
   {title:"การทำงานของตับ (LFT)",keys:[{k:"ast",l:"AST (SGOT)",u:"U/L",d:0},{k:"alt",l:"ALT (SGPT)",u:"U/L",d:0},{k:"alp",l:"ALP",u:"U/L",d:0},{k:"ggt",l:"GGT",u:"U/L",d:0},{k:"tbili",l:"บิลิรูบินรวม",u:"mg/dL",d:1},{k:"dbili",l:"บิลิรูบินตรง",u:"mg/dL",d:1},{k:"alb",l:"อัลบูมิน",u:"g/dL",d:1}]},
-  {title:"ความสมบูรณ์เม็ดเลือด (CBC)",keys:[{k:"hb",l:"ฮีโมโกลบิน (Hb)",u:"g/dL",d:1},{k:"hct",l:"ฮีมาโตคริต (Hct)",u:"%",d:0},{k:"wbc",l:"เม็ดเลือดขาว (WBC)",u:"×10³/µL",d:1},{k:"plt",l:"เกล็ดเลือด (Platelet)",u:"×10³/µL",d:0}]},
+  {title:"ความสมบูรณ์เม็ดเลือด (CBC)",keys:[{k:"wbc",l:"เม็ดเลือดขาว (WBC)",u:"×10³/µL",d:1},{k:"rbc",l:"เม็ดเลือดแดง (RBC)",u:"×10⁶/µL",d:2},{k:"hb",l:"ฮีโมโกลบิน (Hb)",u:"g/dL",d:1},{k:"hct",l:"ฮีมาโตคริต (Hct)",u:"%",d:1},{k:"mcv",l:"MCV (ขนาดเม็ดเลือดแดง)",u:"fl",d:1},{k:"mch",l:"MCH",u:"pg",d:1},{k:"mchc",l:"MCHC",u:"g/dL",d:1},{k:"rdw",l:"RDW",u:"%",d:1},{k:"plt",l:"เกล็ดเลือด (Platelet)",u:"×10³/µL",d:0},{k:"neut",l:"Neutrophil",u:"%",d:1},{k:"lym",l:"Lymphocyte",u:"%",d:1},{k:"mono",l:"Monocyte",u:"%",d:1},{k:"eos",l:"Eosinophil",u:"%",d:1},{k:"baso",l:"Basophil",u:"%",d:1}]},
   {title:"ฮอร์โมนไทรอยด์ (Thyroid)",keys:[{k:"tsh",l:"TSH",u:"mIU/L",d:2},{k:"ft4",l:"Free T4 (FT4)",u:"ng/dL",d:2},{k:"t3",l:"T3",u:"ng/dL",d:0}]},
   {title:"วิตามิน & ค่าตรวจพิเศษ",keys:[{k:"vitd",l:"วิตามิน D",u:"ng/mL",d:0},{k:"ferritin",l:"เฟอร์ริติน",u:"ng/mL",d:0},{k:"psa",l:"PSA",u:"ng/mL",d:1}]},
 ];
@@ -745,9 +757,21 @@ function renderTiles(tl,goals){
     </div>`;
   }).filter(Boolean).join("") || `<div class="tile"><div class="lbl">ยังไม่มีข้อมูลค่าตรวจ</div></div>`;
 }
+const QUAL_GROUPS=[
+  {title:"ผลตรวจปัสสาวะ (Urinalysis)",keys:[["ua_color","สี"],["ua_appear","ลักษณะ"],["ua_sg","ความถ่วงจำเพาะ"],["ua_ph","ความเป็นกรด-ด่าง (pH)"],["ua_pro","โปรตีน"],["ua_glu","น้ำตาล"],["ua_ket","คีโตน"],["ua_blood","เลือด"],["ua_leu","เม็ดเลือดขาว"],["ua_nit","ไนไตรต์"],["ua_uro","ยูโรบิลิโนเจน"],["ua_bil","บิลิรูบิน"],["ua_wbc","WBC (กล้องจุลทรรศน์)"],["ua_rbc","RBC (กล้องจุลทรรศน์)"],["ua_epi","เซลล์เยื่อบุ"]]},
+  {title:"ไวรัสตับอักเสบ บี (Serology)",keys:[["hbsag","HBsAg (เชื้อไวรัส)"],["antihbs","Anti-HBs (ภูมิคุ้มกัน)"]]},
+];
+function latestText(tl,key){if(!tl.textDates)return null;for(const d of tl.textDates){const v=tl.textRows[d]&&tl.textRows[d][key];if(v!=null&&v!=="")return{v,d};}return null;}
+function renderQual(tl){
+  return QUAL_GROUPS.map(g=>{
+    const rows=g.keys.map(([k,l])=>{const r=latestText(tl,k);if(!r)return"";const t=thDate(r.d);return `<tr><td class="c-param"><span class="pl">${l}</span></td><td class="qv">${r.v}</td><td class="qd">${t.d} พ.ศ. ${t.y}</td></tr>`;}).filter(Boolean);
+    if(!rows.length)return"";
+    return `<div class="tablecard"><h3>${g.title} <span class="qhint">— ผลล่าสุด</span></h3><div class="tscroll"><table><thead><tr><th class="c-param">รายการ</th><th class="qv">ผล</th><th class="qd">วันที่</th></tr></thead><tbody>${rows.join("")}</tbody></table></div></div>`;
+  }).filter(Boolean).join("");
+}
 function renderTables(tl,goals){
   const MAXCOL=6,dates=tl.dates.slice(0,MAXCOL),srcMark={A:"a",B:"b",calc:"c"};
-  $("#tables").innerHTML=GROUPS.map(group=>{
+  const numHTML=GROUPS.map(group=>{
     const keys=group.keys.filter(m=>dates.some(d=>tl.rows[d][m.k]));if(!keys.length)return"";
     const dhead=dates.map((d,i)=>{const t=thDate(d);return `<th class="${i===0?'now':''}">${t.d}<span class="yr">พ.ศ. ${t.y}</span></th>`;}).join("");
     const head=`<tr><th class="c-param">พารามิเตอร์</th><th class="c-goal">เป้าหมาย</th>${dhead}</tr>`;
@@ -761,7 +785,8 @@ function renderTables(tl,goals){
       return `<tr><td class="c-param"><span class="pl">${m.l}</span><span class="pu">${m.u||""}</span></td><td class="c-goal">${goalDisp(goals[m.k])}</td>${cells}</tr>`;
     }).join("");
     return `<div class="tablecard"><h3>${group.title}</h3><div class="tscroll"><table><thead>${head}</thead><tbody>${body}</tbody></table></div></div>`;
-  }).filter(Boolean).join("") || `<div class="tablecard"><h3>ยังไม่มีประวัติค่าตรวจ</h3></div>`;
+  }).filter(Boolean).join("");
+  $("#tables").innerHTML=(numHTML+renderQual(tl)) || `<div class="tablecard"><h3>ยังไม่มีประวัติค่าตรวจ</h3></div>`;
 }
 
 /* ===== UNLINK ===== */
