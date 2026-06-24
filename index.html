@@ -459,7 +459,7 @@ async function fetchByHN(hn){
 }
 
 /* ===== MERGE ===== */
-const A_MAP={sbp:"sbp",dbp:"dbp",weight:"wt",bmi:"bmi",pbf:"pbf",smm:"smm",vfl:"vfl",bfm:"bfm",inbodyScore:"inbody",fbs:"fbs",a1c:"a1c",ldl:"ldl",hdl:"hdl",tg:"tg",tc:"tc",cr:"cr",upcr:"upcr",apob:"apob",lpa:"lpa",ast:"ast",alt:"alt",alp:"alp",ggt:"ggt",tbili:"tbili",dbili:"dbili",albumin:"alb",hb:"hb",hct:"hct",wbc:"wbc",plt:"plt",tsh:"tsh",ft4:"ft4",t3:"t3",vitd:"vitd",ferritin:"ferritin",psa:"psa"};
+const A_MAP={sbp:"sbp",dbp:"dbp",weight:"wt",bmi:"bmi",pbf:"pbf",smm:"smm",vfl:"vfl",bfm:"bfm",inbodyScore:"inbody",fbs:"fbs",a1c:"a1c",ldl:"ldl",hdl:"hdl",tg:"tg",tc:"tc",cr:"cr",upcr:"upcr",apob:"apob",lpa:"lpa",ast:"ast",alt:"alt",alp:"alp",ggt:"ggt",tbili:"tbili",dbili:"dbili",albumin:"alb",hb:"hb",hct:"hct",wbc:"wbc",plt:"plt",rbc:"rbc",mcv:"mcv",mch:"mch",mchc:"mchc",rdw:"rdw",neut:"neut",lym:"lym",mono:"mono",eos:"eos",baso:"baso",na:"na",k:"k",cl:"cl",co2:"co2",tsh:"tsh",ft4:"ft4",t3:"t3",vitd:"vitd",ferritin:"ferritin",psa:"psa"};
 function ageAt(dob,dateStr){if(!dob||!dateStr)return null;const b=new Date(dob+"T00:00:00"),d=new Date(dateStr+"T00:00:00");if(isNaN(b)||isNaN(d))return null;let a=d.getFullYear()-b.getFullYear();const m=d.getMonth()-b.getMonth();if(m<0||(m===0&&d.getDate()<b.getDate()))a--;return a;}
 function ckdEpi(scr,age,sex){scr=+scr;age=+age;if(!scr||!age||!sex)return null;const fem=sex==="female",k=fem?0.7:0.9,al=fem?-0.241:-0.302,r=scr/k;let e=142*Math.pow(Math.min(r,1),al)*Math.pow(Math.max(r,1),-1.200)*Math.pow(0.9938,age);if(fem)e*=1.012;return Math.round(e);}
 function ckdStageInfo(e){if(e==null||e>=60)return null;
@@ -471,7 +471,8 @@ function buildTimeline(data){
   const rows={}, textRows={};
   const put=(date,key,val,src)=>{if(!date)return;const n=num(val);if(n==null)return;rows[date]=rows[date]||{};if(rows[date][key]==null)rows[date][key]={v:n,src};};
   const putText=(date,key,val)=>{if(!date||val==null||String(val).trim()==="")return;textRows[date]=textRows[date]||{};if(textRows[date][key]==null)textRows[date][key]=String(val).trim();};
-  data.visits.forEach(v=>{for(const f in A_MAP)put(v.visitDate,A_MAP[f],v[f],"A");});
+  const A_TEXT=["ua_color","ua_appear","ua_sg","ua_ph","ua_pro","ua_glu","ua_ket","ua_blood","ua_leu","ua_nit","ua_uro","ua_bil","ua_wbc","ua_rbc","ua_epi","hbsag","antihbs"];
+  data.visits.forEach(v=>{for(const f in A_MAP)put(v.visitDate,A_MAP[f],v[f],"A");A_TEXT.forEach(f=>putText(v.visitDate,f,v[f]));});
   if(data.patient){
     (data.patient.vitalsHistory||data.patient.vitals||[]).forEach(e=>{put(e.d,"sbp",e.sb,"B");put(e.d,"dbp",e.db,"B");put(e.d,"hr",e.hr,"B");put(e.d,"wt",e.wt,"B");});
     const B_LAB_MAP={fbs:"fbs",a1c:"a1c",cr:"cr",egfr:"egfr",tc:"tc",tg:"tg",hdl:"hdl",ldl:"ldl",nonhdl:"nonhdl",na:"na",k:"k",cl:"cl",co2:"co2",ast:"ast",alt:"alt",alp:"alp",ggt:"ggt",tbil:"tbili",dbil:"dbili",alb:"alb",wbc:"wbc",rbc:"rbc",hb:"hb",hct:"hct",mcv:"mcv",mch:"mch",mchc:"mchc",rdw:"rdw",plt:"plt",neut:"neut",lym:"lym",mono:"mono",eos:"eos",baso:"baso",tsh:"tsh",ft4:"ft4",t3:"t3"};
